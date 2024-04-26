@@ -1,10 +1,8 @@
-﻿using dotstate;
+﻿namespace DotState.Contracts;
 
-namespace DotState.Contracts;
-
-public interface IStateConfiguration<TState, TTrigger> where TState : notnull where TTrigger : notnull
+internal interface IStateConfiguration<TState, TTrigger> where TState : notnull where TTrigger : notnull
 {
-    public void AddTransition(TTrigger trigger, IStateConfiguration<TState, TTrigger> destination, Func<TState, bool>? predicate = null);
     public Transition<TState, TTrigger>? GetTransition(TTrigger trigger);
+    public void AddTransition(TTrigger trigger, Transition<TState, TTrigger> transition);
     public TState GetState();
 }

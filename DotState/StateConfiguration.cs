@@ -1,10 +1,11 @@
 ﻿using DotState.Contracts;
 
-namespace dotstate;
+namespace DotState;
 
-public class StateConfiguration<TState, TTrigger> : IStateConfiguration<TState, TTrigger>
+internal class StateConfiguration<TState, TTrigger> : IStateConfiguration<TState, TTrigger>
     where TState : notnull where TTrigger : notnull
 {
+    private readonly IStateConfigurationFactory<TState, TTrigger> _factory;
     private readonly TState _state;
     private readonly Dictionary<TTrigger, Transition<TState, TTrigger>> transitions;
 
@@ -12,11 +13,11 @@ public class StateConfiguration<TState, TTrigger> : IStateConfiguration<TState, 
     {
         transitions = new();
         _state = state;
+        _factory = new StateConfigurationFactory<TState, TTrigger>();
     }
 
-    public void AddTransition(TTrigger trigger, IStateConfiguration<TState, TTrigger> destination, Func<TState, bool>? predicate = null)
+    public void AddTransition(TTrigger trigger, Transition<TState, TTrigger> transition)
     {
-        Transition<TState, TTrigger> transition = predicate == null ? new(destination) : new(destination, predicate);
         transitions.Add(trigger, transition);
     }
 

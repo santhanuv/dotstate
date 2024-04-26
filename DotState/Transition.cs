@@ -1,8 +1,8 @@
 using DotState.Contracts;
 
-namespace dotstate;
+namespace DotState;
 
-public class Transition<TState, TTrigger> where TState : notnull where TTrigger : notnull
+internal class Transition<TState, TTrigger> where TState : notnull where TTrigger : notnull
 {
     private readonly IStateConfiguration<TState, TTrigger> _destination;
     private Func<TState, bool> _predicate;
@@ -13,6 +13,11 @@ public class Transition<TState, TTrigger> where TState : notnull where TTrigger 
     public Transition(IStateConfiguration<TState, TTrigger> destination, Func<TState, bool> predicate)
     {
         _destination = destination;
+        _predicate = predicate;
+    }
+
+    public void SetPredicate(Func<TState, bool> predicate)
+    {
         _predicate = predicate;
     }
 
@@ -29,5 +34,10 @@ public class Transition<TState, TTrigger> where TState : notnull where TTrigger 
         }
 
         return null;
+    }
+
+    public IStateConfiguration<TState, TTrigger> GetDestination()
+    {
+        return _destination;
     }
 }
