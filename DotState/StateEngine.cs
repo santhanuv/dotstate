@@ -20,6 +20,8 @@ public class StateEngine<TState, TTrigger> where TState : notnull where TTrigger
         var transition = _stateConfig.GetTransition(trigger);
         var state = _stateConfig.GetState();
 
+        _stateConfig.OnExit?.Invoke(state, trigger);
+
         var newStateConfig = transition?.ExecuteTransition(state);
 
         if (newStateConfig != null)
@@ -31,6 +33,7 @@ public class StateEngine<TState, TTrigger> where TState : notnull where TTrigger
             throw new InvalidTransitionException<TState, TTrigger>(state, trigger);
         }
         
+        _stateConfig.OnEntry?.Invoke(state, trigger);
         return _stateConfig.GetState();
     }
 
