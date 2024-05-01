@@ -1,4 +1,5 @@
 ﻿using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState;
 
@@ -10,31 +11,27 @@ public class StateEngine<TState, TTrigger> where TState : notnull where TTrigger
     public StateEngine(StateMachine<TState, TTrigger> machine, TState initialState)
     {
         _machine = machine;
-        var stateConfig = _machine.GetStateConfiguration(initialState);
-
-        if (stateConfig == null)
-        {
-            throw new Exception($"{initialState} is not registered");
-        }
-
+        var stateConfig = _machine.GetStateConfiguration(initialState) ?? throw new Exception($"State \"{initialState}\" is not registered");
         _stateConfig = stateConfig;
     }
 
-    public bool ExecuteTransition(TTrigger trigger)
+    public TState ExecuteTransition(TTrigger trigger)
     {
-        var status = false;
-
         var transition = _stateConfig.GetTransition(trigger);
         var state = _stateConfig.GetState();
 
         var newStateConfig = transition?.ExecuteTransition(state);
+
         if (newStateConfig != null)
         {
             _stateConfig = newStateConfig;
-            status = true;
+        }
+        else
+        {
+            throw new InvalidTransitionException<TState, TTrigger>(state, trigger);
         }
         
-        return status;
+        return _stateConfig.GetState();
     }
 
     public TState GetCurrentState()
