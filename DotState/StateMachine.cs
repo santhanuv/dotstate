@@ -44,6 +44,10 @@ public class StateMachine<TState, TTrigger> where TState : notnull where TTrigge
         {
             stateConfig.OnEntry = action;
         }
+        else
+        {
+            throw new InvalidOperationException($"State \"{state}\" is not registered");
+        }
 
         return this;
     }
@@ -55,6 +59,10 @@ public class StateMachine<TState, TTrigger> where TState : notnull where TTrigge
         if (stateConfig != null)
         {
             stateConfig.OnExit = action;
+        }
+        else
+        {
+            throw new InvalidOperationException($"State \"{state}\" is not registered");
         }
 
         return this;
