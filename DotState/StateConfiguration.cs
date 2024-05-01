@@ -6,22 +6,25 @@ internal class StateConfiguration<TState, TTrigger> : IStateConfiguration<TState
     where TState : notnull where TTrigger : notnull
 {
     private readonly TState _state;
-    private readonly Dictionary<TTrigger, Transition<TState, TTrigger>> transitions;
+    private readonly Dictionary<TTrigger, Transition<TState, TTrigger>> _transitions;
+
+    public Action<TState, TTrigger>? OnEntry { get; set; } = null;
+    public Action<TState, TTrigger>? OnExit { get; set; } = null;
 
     public StateConfiguration(TState state)
     {
-        transitions = new();
+        _transitions = new();
         _state = state;
     }
 
     public void AddTransition(TTrigger trigger, Transition<TState, TTrigger> transition)
     {
-        transitions.Add(trigger, transition);
+        _transitions.Add(trigger, transition);
     }
 
     public Transition<TState, TTrigger>? GetTransition(TTrigger trigger)
     {
-        transitions.TryGetValue(trigger, out var transition);
+        _transitions.TryGetValue(trigger, out var transition);
         return transition;
     }
 

@@ -36,6 +36,30 @@ public class StateMachine<TState, TTrigger> where TState : notnull where TTrigge
         return this;
     }
 
+    public StateMachine<TState, TTrigger> OnEntry(TState state, Action<TState, TTrigger> action)
+    {
+        var stateConfig = GetStateConfiguration(state);
+
+        if (stateConfig != null)
+        {
+            stateConfig.OnEntry = action;
+        }
+
+        return this;
+    }
+
+    public StateMachine<TState, TTrigger> OnExit(TState state, Action<TState, TTrigger> action)
+    {
+        var stateConfig = GetStateConfiguration(state);
+
+        if (stateConfig != null)
+        {
+            stateConfig.OnExit = action;
+        }
+
+        return this;
+    }
+
     internal IStateConfiguration<TState, TTrigger>? GetStateConfiguration(TState state)
     {
         return _stateConfigs.TryGetValue(state, out var configuration) ? configuration : null;
