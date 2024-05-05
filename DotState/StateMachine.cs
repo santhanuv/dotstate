@@ -2,79 +2,21 @@
 
 namespace DotState;
 
-public class StateMachine<TState, TTrigger> where TState : notnull where TTrigger : notnull
+internal class StateMachine<TState, TTrigger> : IStateMachine<TState, TTrigger>
 {
-    private readonly Dictionary<TState, IStateConfiguration<TState, TTrigger>> _stateConfigs;
-    private readonly IStateConfigurationFactory<TState, TTrigger> _factory;
-
+    private readonly IDictionary<TState, IStateRepresentation<TState, TTrigger>> _stateRepresentations;
     public StateMachine()
     {
-        _stateConfigs = new();
-        _factory = new StateConfigurationFactory<TState, TTrigger>();
+        _stateRepresentations = new Dictionary<TState, IStateRepresentation<TState, TTrigger>>();
     }
 
-    public StateMachine<TState,TTrigger> Register(TState source, TTrigger trigger, TState destination)
+    public IStateRepresentation<TState, TTrigger>? GetStateRepresentation(TState state)
     {
-        var sourceConfig = GetStateConfiguration(source);
-        var destinationConfig = GetStateConfiguration(destination);
-        
-        if (sourceConfig == null)
-        {
-            sourceConfig = _factory.CreateStateConfiguration(source);
-            _stateConfigs[source] = sourceConfig;
-        }
-
-        if (destinationConfig == null)
-        {
-            destinationConfig = _factory.CreateStateConfiguration(destination);
-            _stateConfigs[destination] = destinationConfig;
-        }
-
-        var transition = _factory.CreateTransition(destinationConfig);
-        sourceConfig.AddTransition(trigger, transition);
-        
-        return this;
+        return _stateRepresentations[state];
     }
 
-    public StateMachine<TState, TTrigger> OnEntry(TState state, Action<TState, TTrigger> action)
+    public void RegisterState(TState state, IStateRepresentation<TState, TTrigger> stateRepresentation)
     {
-        var stateConfig = GetStateConfiguration(state);
-
-        if (stateConfig != null)
-        {
-            stateConfig.OnEntry = action;
-        }
-        else
-        {
-            throw new InvalidOperationException($"State \"{state}\" is not registered");
-        }
-
-        return this;
-    }
-
-    public StateMachine<TState, TTrigger> OnExit(TState state, Action<TState, TTrigger> action)
-    {
-        var stateConfig = GetStateConfiguration(state);
-
-        if (stateConfig != null)
-        {
-            stateConfig.OnExit = action;
-        }
-        else
-        {
-            throw new InvalidOperationException($"State \"{state}\" is not registered");
-        }
-
-        return this;
-    }
-
-    internal IStateConfiguration<TState, TTrigger>? GetStateConfiguration(TState state)
-    {
-        return _stateConfigs.TryGetValue(state, out var configuration) ? configuration : null;
-    }
-
-    public bool IsRegisteredState(TState state)
-    {
-        return _stateConfigs.ContainsKey(state);
+        _stateRepresentations.TryAdd(state, stateRepresentation);
     }
 }

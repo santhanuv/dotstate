@@ -1,43 +1,39 @@
 using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState;
 
-internal class Transition<TState, TTrigger> where TState : notnull where TTrigger : notnull
+internal class Transition<TState, TTrigger> : ITransition<TState, TTrigger>
 {
-    private readonly IStateConfiguration<TState, TTrigger> _destination;
-    private Func<TState, bool> _predicate;
+    public TState Source { get; private set; }
+    private IDictionary<IStateRepresentation<TState, TTrigger>, Func<TState, TTrigger, bool>> _gaurds;
 
-
-    public Transition(IStateConfiguration<TState, TTrigger> destination) : this(destination, (_) => true) { }
-
-    public Transition(IStateConfiguration<TState, TTrigger> destination, Func<TState, bool> predicate)
+    public Transition(TState source)
     {
-        _destination = destination;
-        _predicate = predicate;
+        Source = source;
+        _gaurds = new Dictionary<IStateRepresentation<TState, TTrigger>, Func<TState, TTrigger, bool>>();
     }
 
-    public void SetPredicate(Func<TState, bool> predicate)
+    public void AddGaurd(Func<TState, TTrigger, bool> gaurd, IStateRepresentation<TState, TTrigger> destination)
     {
-        _predicate = predicate;
-    }
+        if (destination == null) { throw new ArgumentNullException(nameof(destination)); }
 
-    public bool CanTransition(TState currentState)
-    {
-        return _predicate(currentState);
-    }
-
-    public IStateConfiguration<TState, TTrigger>? ExecuteTransition(TState currentState)
-    {
-        if (CanTransition(currentState))
+        if (!_gaurds.TryAdd(destination, gaurd))
         {
-            return _destination;
+            throw new InvalidOperationException($"A gaurd to {destination} already exists");
+        }
+    }
+
+    public IStateRepresentation<TState, TTrigger>? GetDestination(TState currentState, TTrigger currentTrigger)
+    {
+        var selectedGaurd = _gaurds.Where(gaurd => gaurd.Value.Invoke(currentState, currentTrigger));
+
+        if (selectedGaurd.Count() > 1)
+        {
+            var innerException = new Exception($"Multiple states are possible from {currentState} on {currentTrigger}");
+            throw new InvalidTransitionException<TState, TTrigger>(currentState, currentTrigger, innerException);
         }
 
-        return null;
-    }
-
-    public IStateConfiguration<TState, TTrigger> GetDestination()
-    {
-        return _destination;
+        return selectedGaurd.Select(gaurd => gaurd.Key).FirstOrDefault();
     }
 }

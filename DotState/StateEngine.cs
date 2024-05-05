@@ -3,45 +3,36 @@ using DotState.Exceptions;
 
 namespace DotState;
 
-public class StateEngine<TState, TTrigger> where TState : notnull where TTrigger : notnull
+public class StateEngine<TState, TTrigger>
 {
-    private readonly StateMachine<TState, TTrigger> _machine;
-    private IStateConfiguration<TState, TTrigger> _stateConfig;
+    private readonly IStateMachine<TState, TTrigger> _machine;
+    private IStateRepresentation<TState, TTrigger> _stateRep;
 
-    public StateEngine(StateMachine<TState, TTrigger> machine, TState initialState, TTrigger initialTrigger)
+    public StateEngine(IStateMachine<TState, TTrigger> machine, TState initialState)
     {
         _machine = machine;
-        var stateConfig = _machine.GetStateConfiguration(initialState) ?? throw new Exception($"State \"{initialState}\" is not registered");
-        _stateConfig = stateConfig;
-        _stateConfig.OnEntry?.Invoke(initialState, initialTrigger);
+        var stateRep = _machine.GetStateRepresentation(initialState) ?? throw new Exception($"State \"{initialState}\" is not registered");
+        this._stateRep = stateRep;
     }
 
     public TState ExecuteTransition(TTrigger trigger)
     {
-        var transition = _stateConfig.GetTransition(trigger);
-        var state = _stateConfig.GetState();
+        var state = _stateRep.State;
+        var transition = _stateRep.GetTransition(trigger) ?? throw new InvalidTransitionException<TState, TTrigger>(state, trigger);
+        var nextStateRep = transition.GetDestination(state, trigger) ?? throw new InvalidTransitionException<TState, TTrigger>(state, trigger); 
 
-        _stateConfig.OnExit?.Invoke(state, trigger);
+        _stateRep = nextStateRep;
 
-        var newStateConfig = transition?.ExecuteTransition(state);
+        var nextState = _stateRep.State;
 
-        if (newStateConfig != null)
-        {
-            _stateConfig = newStateConfig;
-        }
-        else
-        {
-            throw new InvalidTransitionException<TState, TTrigger>(state, trigger);
-        }
+        _stateRep.OnExit?.Invoke(nextState, trigger);
+        _stateRep.OnEntry?.Invoke(nextState, trigger);
 
-        var newState = _stateConfig.GetState();
-
-        _stateConfig.OnEntry?.Invoke(newState, trigger);
-        return newState;
+        return nextState;
     }
 
     public TState GetCurrentState()
     {
-        return _stateConfig.GetState();
+        return _stateRep.State;
     }
 }
