@@ -3,45 +3,42 @@ using DotState.Exceptions;
 
 namespace DotState;
 
-public class StateEngine<TState, TTrigger> where TState : notnull where TTrigger : notnull
+public class StateEngine<TState, TTrigger>
 {
-    private readonly StateMachine<TState, TTrigger> _machine;
-    private IStateConfiguration<TState, TTrigger> _stateConfig;
+    private readonly IStateMachine<TState, TTrigger> _machine;
+    private IStateRepresentation<TState, TTrigger> _currentState;
+    public TState CurrentState { get { return _currentState.State; } }
+    public bool IgnoreInvalidTriggers { get; set; } = false;
 
-    public StateEngine(StateMachine<TState, TTrigger> machine, TState initialState, TTrigger initialTrigger)
+    public StateEngine(IStateMachine<TState, TTrigger> machine, TState initialState)
     {
         _machine = machine;
-        var stateConfig = _machine.GetStateConfiguration(initialState) ?? throw new Exception($"State \"{initialState}\" is not registered");
-        _stateConfig = stateConfig;
-        _stateConfig.OnEntry?.Invoke(initialState, initialTrigger);
+        var stateRep = _machine.GetStateRepresentation(initialState) ?? throw new Exception($"State \"{initialState}\" is not registered");
+        this._currentState = stateRep;
     }
 
     public TState ExecuteTransition(TTrigger trigger)
     {
-        var transition = _stateConfig.GetTransition(trigger);
-        var state = _stateConfig.GetState();
-
-        _stateConfig.OnExit?.Invoke(state, trigger);
-
-        var newStateConfig = transition?.ExecuteTransition(state);
-
-        if (newStateConfig != null)
+        var state = _currentState.State ?? throw new NullReferenceException($"Unexpected transition from invalid state");
+        var transition = _currentState.GetTransition(trigger);
+        var nextStateRep = transition?.GetDestination(state, trigger); 
+        
+        if (transition == null || nextStateRep == null)
         {
-            _stateConfig = newStateConfig;
-        }
-        else
-        {
-            throw new InvalidTransitionException<TState, TTrigger>(state, trigger);
+            if (IgnoreInvalidTriggers) return state; 
+            else throw new InvalidTransitionException<TState, TTrigger>(state, trigger);
         }
 
-        var newState = _stateConfig.GetState();
+        _currentState = nextStateRep;
+        var nextState = _currentState.State;
 
-        _stateConfig.OnEntry?.Invoke(newState, trigger);
-        return newState;
-    }
+        if (!state.Equals(nextState))
+        {
+            _currentState.OnExit?.Invoke(state, trigger);
+            _currentState.OnEntry?.Invoke(nextState, trigger);
 
-    public TState GetCurrentState()
-    {
-        return _stateConfig.GetState();
+        }
+
+        return nextState;
     }
 }

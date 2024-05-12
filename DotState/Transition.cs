@@ -1,43 +1,30 @@
 using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState;
 
-internal class Transition<TState, TTrigger> where TState : notnull where TTrigger : notnull
+internal class Transition<TState, TTrigger> : ITransition<TState, TTrigger>
 {
-    private readonly IStateConfiguration<TState, TTrigger> _destination;
-    private Func<TState, bool> _predicate;
+    public TState Source { get; private set; }
+    public IDictionary<IStateRepresentation<TState, TTrigger>, IList<Func<TState, TTrigger, bool>>> DestinationGaurds { get; set; }
 
-
-    public Transition(IStateConfiguration<TState, TTrigger> destination) : this(destination, (_) => true) { }
-
-    public Transition(IStateConfiguration<TState, TTrigger> destination, Func<TState, bool> predicate)
+    public Transition(TState source, IDictionary<IStateRepresentation<TState, TTrigger>, IList<Func<TState, TTrigger, bool>>> destinationGaurds)
     {
-        _destination = destination;
-        _predicate = predicate;
+       Source = source;
+       DestinationGaurds = destinationGaurds;
     }
 
-    public void SetPredicate(Func<TState, bool> predicate)
+    public IStateRepresentation<TState, TTrigger>? GetDestination(TState currentState, TTrigger currentTrigger)
     {
-        _predicate = predicate;
-    }
+        var selectedGaurd = DestinationGaurds
+            .Where(dg => dg.Value.All(gl => gl.Invoke(currentState, currentTrigger)));
 
-    public bool CanTransition(TState currentState)
-    {
-        return _predicate(currentState);
-    }
-
-    public IStateConfiguration<TState, TTrigger>? ExecuteTransition(TState currentState)
-    {
-        if (CanTransition(currentState))
+        if (selectedGaurd.Count() > 1)
         {
-            return _destination;
+            var innerException = new Exception($"Multiple states are possible from {currentState} on {currentTrigger}");
+            throw new InvalidTransitionException<TState, TTrigger>(currentState, currentTrigger, innerException);
         }
 
-        return null;
-    }
-
-    public IStateConfiguration<TState, TTrigger> GetDestination()
-    {
-        return _destination;
+        return selectedGaurd.Select(gaurd => gaurd.Key).FirstOrDefault();
     }
 }

@@ -12,6 +12,11 @@ public class InvalidTransitionException<TState, TTrigger> : Exception
     {
     }
 
+    public InvalidTransitionException(TState state, TTrigger trigger, Exception inner)
+        : this(state, trigger, CreateMessageString(state, trigger), inner)
+    {
+    }
+
     public InvalidTransitionException(TState state, TTrigger trigger, string message, Exception? inner)
         : base(message, inner)
     {
