@@ -20,14 +20,16 @@ public class StateEngine<TState, TTrigger>
     public TState ExecuteTransition(TTrigger trigger)
     {
         var state = _currentState.State ?? throw new NullReferenceException($"Unexpected transition from invalid state");
-        var transition = _currentState.GetTransition(trigger);
-        var nextStateRep = transition?.GetDestination(state, trigger); 
         
-        if (transition == null || nextStateRep == null)
+        var transition = _currentState.GetTransition(trigger);
+        var nextStateRep = transition?.GetDestination(state, trigger);
+
+        if (transition == null)
         {
-            if (IgnoreInvalidTriggers) return state; 
+            if (IgnoreInvalidTriggers) return state;
             else throw new InvalidTransitionException<TState, TTrigger>(state, trigger);
         }
+        else if (nextStateRep == null) return state;
 
         _currentState = nextStateRep;
         var nextState = _currentState.State;
