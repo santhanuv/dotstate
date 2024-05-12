@@ -4,31 +4,21 @@ namespace DotState.Builder;
 
 public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState, TTrigger>
 {
-    private readonly IDictionary<TState, IStateBuilder<TState, TTrigger>> _stateBuilders;
+    private readonly IDictionary<TState, StateBuilder<TState, TTrigger>> _stateBuilders;
 
     public StateMachineBuilder()
     {
-        _stateBuilders = new Dictionary<TState, IStateBuilder<TState, TTrigger>>();
+        _stateBuilders = new Dictionary<TState, StateBuilder<TState, TTrigger>>();
     }
 
     public IStateMachine<TState, TTrigger> Build()
     {
         var stateMachine = new StateMachine<TState, TTrigger>();
+        BuildStateRepresentations(stateMachine);
 
         foreach (var builder in _stateBuilders.Values)
         {
-            BuildStateRepresentation(builder, stateMachine);
-        }
-
-        foreach (var builder in _stateBuilders.Values)
-        {
-            if (builder.Parent != null)
-            {
-                var child = stateMachine.GetStateRepresentation(builder.State) ?? throw new ArgumentNullException($"Unable to find state \"{builder.State}\"");
-                var parent = stateMachine.GetStateRepresentation(builder.Parent) ?? throw new ArgumentNullException($"Unable to find state \"{builder.Parent}\"");
-
-                parent.AddChild(child);
-            }
+            builder.SetupStateRelations(stateMachine);
         }
 
         return stateMachine;
@@ -36,28 +26,38 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
 
     public IStateBuilder<TState, TTrigger> Configure(TState source)
     {
-        if (source == null) throw new ArgumentNullException(nameof(source));
+        return GetOrRegisterState(source);
+    }
 
-        var stateBuilder = new StateBuilder<TState, TTrigger>(source);
+    public IStateBuilder<TState, TTrigger>? GetStateBuilder(TState state)
+    {
+        _stateBuilders.TryGetValue(state, out var builder);
+        return builder;
+    }
 
-        _stateBuilders.TryAdd(source, stateBuilder);
+    internal StateBuilder<TState, TTrigger> GetOrRegisterState(TState state) 
+    {
+        if (state == null) throw new ArgumentNullException(nameof(state));
+
+        _stateBuilders.TryGetValue(state, out var stateBuilder);
+
+        if (stateBuilder == null)
+        {
+            stateBuilder = new StateBuilder<TState, TTrigger>(this, state);
+            _stateBuilders.TryAdd(state, stateBuilder);
+        }
 
         return stateBuilder;
     }
 
-    public IStateBuilder<TState, TTrigger> GetStateBuilder(TState state)
+    private void BuildStateRepresentations(IStateMachine<TState, TTrigger> stateMachine)
     {
-        return _stateBuilders[state];
-    }
-
-    private static IStateMachine<TState, TTrigger> BuildStateRepresentation(IStateBuilder<TState, TTrigger> builder, IStateMachine<TState, TTrigger> stateMachine)
-    {
-        if (stateMachine.GetStateRepresentation(builder.State) == null)
+        foreach (var stateBuilder in _stateBuilders.Values)
         {
-            var stateRep = new StateRepresentation<TState, TTrigger>(builder.State, builder.GetEntryAction(), builder.GetExitAction());
-            stateMachine.RegisterState(builder.State, stateRep);
-        }
+            var stateRep = new StateRepresentation<TState, TTrigger>(stateBuilder.State, 
+                stateBuilder.GetEntryAction(), stateBuilder.GetExitAction());
 
-        return stateMachine;
+            stateMachine.RegisterState(stateBuilder.State, stateRep);
+        }
     }
 }

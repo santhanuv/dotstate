@@ -2,6 +2,7 @@
 
 internal interface ITransition<TState, TTrigger>
 {
-    public void AddGaurd(Func<TState, TTrigger, bool> gaurd, IStateRepresentation<TState, TTrigger> destination);
+    public IDictionary<IStateRepresentation<TState, TTrigger>, IList<Func<TState, TTrigger, bool>>> DestinationGaurds { get; set; }
+
     public IStateRepresentation<TState, TTrigger>? GetDestination(TState currentState, TTrigger currentTrigger);
 }

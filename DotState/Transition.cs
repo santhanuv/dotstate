@@ -6,27 +6,18 @@ namespace DotState;
 internal class Transition<TState, TTrigger> : ITransition<TState, TTrigger>
 {
     public TState Source { get; private set; }
-    private IDictionary<IStateRepresentation<TState, TTrigger>, Func<TState, TTrigger, bool>> _gaurds;
+    public IDictionary<IStateRepresentation<TState, TTrigger>, IList<Func<TState, TTrigger, bool>>> DestinationGaurds { get; set; }
 
-    public Transition(TState source)
+    public Transition(TState source, IDictionary<IStateRepresentation<TState, TTrigger>, IList<Func<TState, TTrigger, bool>>> destinationGaurds)
     {
-        Source = source;
-        _gaurds = new Dictionary<IStateRepresentation<TState, TTrigger>, Func<TState, TTrigger, bool>>();
-    }
-
-    public void AddGaurd(Func<TState, TTrigger, bool> gaurd, IStateRepresentation<TState, TTrigger> destination)
-    {
-        if (destination == null) { throw new ArgumentNullException(nameof(destination)); }
-
-        if (!_gaurds.TryAdd(destination, gaurd))
-        {
-            throw new InvalidOperationException($"A gaurd to {destination} already exists");
-        }
+       Source = source;
+       DestinationGaurds = destinationGaurds;
     }
 
     public IStateRepresentation<TState, TTrigger>? GetDestination(TState currentState, TTrigger currentTrigger)
     {
-        var selectedGaurd = _gaurds.Where(gaurd => gaurd.Value.Invoke(currentState, currentTrigger));
+        var selectedGaurd = DestinationGaurds
+            .Where(dg => dg.Value.All(gl => gl.Invoke(currentState, currentTrigger)));
 
         if (selectedGaurd.Count() > 1)
         {
