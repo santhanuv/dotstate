@@ -90,8 +90,33 @@ public class CompositeStateMachineTest
             .Should().Throw<MultipleParentException<State>>();
     }
 
+    [Fact]
+    public void ExecuteTransition_CompositeState_DefaultStateIsSelected()
+    {
+        // Arrange
+        var builder = CreateStateMachineBuilder();
+        builder.ElementState(State.State1)
+            .AddTransition(Trigger.Trigger1, State.State2);
+
+        builder.CompositeState(State.State2, State.State3);
+
+        var engine = CreateStateEngine(builder, State.State1);
+
+        // Act
+        engine.ExecuteTransition(Trigger.Trigger1);
+
+        // Assert
+        engine.CurrentState.Should().Be(State.State3);
+    }
+
     public static IStateMachineBuilder<State, Trigger> CreateStateMachineBuilder()
     {
         return new StateMachineBuilder<State, Trigger>();
+    }
+
+    public static StateEngine<State, Trigger> CreateStateEngine(IStateMachineBuilder<State, Trigger> smBuilder, State initalState)
+    {
+        var stateMachine = smBuilder.Build();
+        return new StateEngine<State, Trigger>(stateMachine, initalState);
     }
 }

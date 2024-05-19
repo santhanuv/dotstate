@@ -14,4 +14,5 @@ public interface IStateBuilder<TState, TTrigger>
     public IStateBuilder<TState, TTrigger> ChildOf(TState parent);
     public IStateBuilder<TState, TTrigger> OnEntry(Action<TState, TTrigger> action);
     public IStateBuilder<TState, TTrigger> OnExit(Action<TState, TTrigger> action);
+    internal IReadOnlyDictionary<TTrigger, TransitionBuilder<TState, TTrigger>> GetAllTransitions();
 }

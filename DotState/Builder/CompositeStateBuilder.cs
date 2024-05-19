@@ -9,11 +9,11 @@ internal class CompositeStateBuilder<TState, TTrigger> :
     internal CompositeStateBuilder(StateMachineBuilder<TState, TTrigger> machineBuilder, TState source, TState defaultState)
         : this(machineBuilder, source, defaultState, null) { }
 
-    internal CompositeStateBuilder(StateMachineBuilder<TState, TTrigger> machineBuilder, TState source, 
-        TState defaultState, StateBuilder<TState, TTrigger>? parent) 
-        : base(machineBuilder, source, defaultState, parent) 
-    {
-    }
+    internal CompositeStateBuilder(StateMachineBuilder<TState, TTrigger> machineBuilder, TState source, TState defaultState, StateBuilder<TState, TTrigger>? parent) 
+        : base(machineBuilder, source, defaultState, parent) {}
+
+    internal CompositeStateBuilder(StateMachineBuilder<TState, TTrigger> machineBuilder, IStateBuilder<TState, TTrigger> stateBuilder, TState defaultState) 
+        :base(machineBuilder, stateBuilder.State, defaultState, stateBuilder.Parent, stateBuilder.GetAllTransitions().ToDictionary(t => t.Key, t => t.Value)) {}
 
     internal override IStateRepresentation<TState, TTrigger> Build(IStateMachine<TState, TTrigger> stateMachine)
     {
