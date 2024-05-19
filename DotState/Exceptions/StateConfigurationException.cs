@@ -15,6 +15,6 @@ public class StateConfigurationException<TState> : Exception
 
     private static string CreateMessageString(TState state)
     {
-        return $"Unexpected error while configuring State \"{state}\"";
+        return $"Invalid configuration for State \"{state}\"";
     }
 }

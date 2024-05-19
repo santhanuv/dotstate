@@ -14,13 +14,14 @@ public class StateEngine<TState, TTrigger>
     public StateEngine(IStateMachine<TState, TTrigger> machine, TState initialState)
     {
         _machine = machine;
-        var stateRep = _machine.GetStateRepresentation(initialState) ?? throw new Exception($"State \"{initialState}\" is not registered");
+        var stateRep = _machine.GetStateRepresentation(initialState) ?? 
+            throw new Exception($"State \"{initialState}\" is not registered");
         this._currentState = stateRep;
     }
 
     public TState ExecuteTransition(TTrigger trigger)
     {
-        var state = _currentState.State ?? throw new NullReferenceException($"Unexpected transition from invalid state");
+        var state = _currentState.State ?? throw new InvalidTransitionException<TState, TTrigger>(_currentState.State, trigger);
         
         var transition = _currentState.GetTransition(trigger);
         var nextStateRep = transition?.GetDestination(state, trigger);
