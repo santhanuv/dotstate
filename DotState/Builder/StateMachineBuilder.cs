@@ -14,19 +14,30 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
     public IStateMachine<TState, TTrigger> Build()
     {
         var stateMachine = new StateMachine<TState, TTrigger>();
-        BuildStateRepresentations(stateMachine);
+        foreach (var stateBuilder in _stateBuilders.Values)
+        {
+            stateBuilder.Build(stateMachine);
+        }
 
         foreach (var builder in _stateBuilders.Values)
         {
-            builder.SetupStateRelations(stateMachine);
+            builder.SetupRelations(stateMachine);
         }
 
         return stateMachine;
     }
 
-    public IStateBuilder<TState, TTrigger> Configure(TState source)
+    public IStateBuilder<TState, TTrigger> CompositeState(TState state, TState defaultState)
     {
-        return GetOrRegisterState(source);
+        var stateBuilder = GetStateBuilder(state);
+
+        return stateBuilder
+            ?? RegisterCompositeState(state, defaultState);
+    }
+
+    public IStateBuilder<TState, TTrigger> ElementState(TState state)
+    {
+        return GetStateBuilder(state) ?? RegisterElementState(state);
     }
 
     public IStateBuilder<TState, TTrigger>? GetStateBuilder(TState state)
@@ -35,29 +46,30 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
         return builder;
     }
 
-    internal StateBuilder<TState, TTrigger> GetOrRegisterState(TState state) 
+    internal CompositeStateBuilder<TState, TTrigger> RegisterCompositeState(TState state, TState defaultState)
     {
         if (state == null) throw new ArgumentNullException(nameof(state));
 
-        _stateBuilders.TryGetValue(state, out var stateBuilder);
+        IStateBuilder<TState, TTrigger>? stateBuilder = GetStateBuilder(state);
 
-        if (stateBuilder == null)
-        {
-            stateBuilder = new StateBuilder<TState, TTrigger>(this, state);
-            _stateBuilders.TryAdd(state, stateBuilder);
-        }
+        if (stateBuilder != null) throw new InvalidOperationException($"State \"{state}\" has been registered already.");
+        
 
-        return stateBuilder;
+        var compositeStateBuilder = new CompositeStateBuilder<TState, TTrigger>(this, state, defaultState);
+        _stateBuilders.TryAdd(state, compositeStateBuilder);
+        return compositeStateBuilder;
+
     }
 
-    private void BuildStateRepresentations(IStateMachine<TState, TTrigger> stateMachine)
+    internal StateBuilder<TState, TTrigger> RegisterElementState(TState state) 
     {
-        foreach (var stateBuilder in _stateBuilders.Values)
-        {
-            var stateRep = new StateRepresentation<TState, TTrigger>(stateBuilder.State, 
-                stateBuilder.GetEntryAction(), stateBuilder.GetExitAction());
+        if (state == null) throw new ArgumentNullException(nameof(state));
 
-            stateMachine.RegisterState(stateBuilder.State, stateRep);
-        }
+        var elementState = new ElementStateBuilder<TState, TTrigger>(this, state);
+        var hasRegistered = _stateBuilders.TryAdd(state, elementState);
+        
+        if (!hasRegistered) throw new InvalidOperationException($"State \"{state}\" has been registered already.");
+
+        return elementState;
     }
 }

@@ -3,6 +3,6 @@
 public interface ITransitionBuilder<TState, TTrigger>
 {
     public TState Source { get; }
-
-    public void AddGaurd(Func<TState, TTrigger, bool> gaurd, TState destination);
+    public void ToDestination(TState destination);
+    public void ToDestination(TState destination, Func<TState, TTrigger, bool> gaurd);
 }
