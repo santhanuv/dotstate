@@ -1,4 +1,5 @@
 ﻿using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState.Builder;
 
@@ -26,9 +27,27 @@ internal class CompositeStateBuilder<TState, TTrigger> :
     internal override void SetupRelations(IStateMachine<TState, TTrigger> stateMachine)
     {
         var stateRep = stateMachine.GetStateRepresentation(State) ??
-            throw new InvalidOperationException($"Unexpected error when building configuration for {State}");
+            throw new StateConfigurationException<TState>(State);
+        var defaultStateRep = stateMachine.GetStateRepresentation(DefaultState)
+            ?? throw new StateConfigurationException<TState>(DefaultState);
 
-        stateRep.Parent = Parent != null ? stateMachine.GetStateRepresentation(Parent.State) : null;
+        if (Parent != null)
+        {
+            var parentStateRep = stateMachine.GetStateRepresentation(Parent.State)
+                ?? throw new StateConfigurationException<TState>(Parent.State);
+            
+            if (stateRep.Parent != null && stateRep.Parent.State != null && !stateRep.Parent.State.Equals(Parent.State))
+                throw new MultipleParentException<TState>(State, stateRep.Parent.State, Parent.State);
+
+            stateRep.Parent = parentStateRep;
+        }
+
+        if (defaultStateRep.Parent != null && State != null && !State.Equals(defaultStateRep.Parent.State))
+        {
+            throw new MultipleParentException<TState>(defaultStateRep.State, defaultStateRep.Parent.State, State);
+        }
+        defaultStateRep.Parent = stateRep;
+        
         stateRep.Transitions = GetAllTransitions().ToDictionary(t => t.Key, t => t.Value.Build(stateMachine));
     }
 }

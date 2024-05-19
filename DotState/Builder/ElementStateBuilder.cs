@@ -1,4 +1,5 @@
 ﻿using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState.Builder;
 
@@ -25,9 +26,18 @@ internal class ElementStateBuilder<TState, TTrigger> :
     internal override void SetupRelations(IStateMachine<TState, TTrigger> stateMachine)
     {
         var stateRep = stateMachine.GetStateRepresentation(State) ??
-            throw new InvalidOperationException($"Unexpected error when building configuration for {State}");
+            throw new StateConfigurationException<TState>(State);
 
-        stateRep.Parent = Parent != null ? stateMachine.GetStateRepresentation(Parent.State) : null;
+        if (Parent != null)
+        {
+            var parentStateRep = stateMachine.GetStateRepresentation(Parent.State)
+                ?? throw new StateConfigurationException<TState>(Parent.State);
+
+            if (stateRep.Parent != null && stateRep.Parent.State != null && !stateRep.Parent.State.Equals(Parent.State))
+                throw new MultipleParentException<TState>(State, Parent.State, stateRep.Parent.State);
+            stateRep.Parent = parentStateRep;
+        }
+
         stateRep.Transitions = GetAllTransitions().ToDictionary(t => t.Key, t => t.Value.Build(stateMachine));
     }
 }

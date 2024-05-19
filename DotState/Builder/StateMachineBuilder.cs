@@ -1,4 +1,5 @@
 ﻿using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState.Builder;
 
@@ -31,8 +32,12 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
     {
         var stateBuilder = GetStateBuilder(state);
 
-        return stateBuilder
-            ?? RegisterCompositeState(state, defaultState);
+        if (stateBuilder != null && stateBuilder.DefaultState != null && !stateBuilder.DefaultState.Equals(defaultState))
+        {
+            throw new MultipleDefaultStateException<TState>(state, stateBuilder.DefaultState, defaultState);
+        }
+
+        return  stateBuilder ?? RegisterCompositeState(state, defaultState);
     }
 
     public IStateBuilder<TState, TTrigger> ElementState(TState state)
@@ -50,26 +55,28 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
     {
         if (state == null) throw new ArgumentNullException(nameof(state));
 
-        IStateBuilder<TState, TTrigger>? stateBuilder = GetStateBuilder(state);
-
-        if (stateBuilder != null) throw new InvalidOperationException($"State \"{state}\" has been registered already.");
-        
-
         var compositeStateBuilder = new CompositeStateBuilder<TState, TTrigger>(this, state, defaultState);
-        _stateBuilders.TryAdd(state, compositeStateBuilder);
-        return compositeStateBuilder;
+        var hasRegistered = _stateBuilders.TryAdd(state, compositeStateBuilder);
 
+        if (!hasRegistered) throw new StateConfigurationException<TState>(state, $"State \"{state}\" has been registered already.");
+
+        if (GetStateBuilder(defaultState) == null)
+        {
+            RegisterElementState(defaultState);
+        }
+
+        return compositeStateBuilder;
     }
 
     internal StateBuilder<TState, TTrigger> RegisterElementState(TState state) 
     {
         if (state == null) throw new ArgumentNullException(nameof(state));
 
-        var elementState = new ElementStateBuilder<TState, TTrigger>(this, state);
-        var hasRegistered = _stateBuilders.TryAdd(state, elementState);
+        var elementStateBuilder = new ElementStateBuilder<TState, TTrigger>(this, state);
+        var hasRegistered = _stateBuilders.TryAdd(state, elementStateBuilder);
         
-        if (!hasRegistered) throw new InvalidOperationException($"State \"{state}\" has been registered already.");
+        if (!hasRegistered) throw new StateConfigurationException<TState>(state, $"State \"{state}\" has been registered already.");
 
-        return elementState;
+        return elementStateBuilder;
     }
 }

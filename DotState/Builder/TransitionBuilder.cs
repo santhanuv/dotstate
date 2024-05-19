@@ -1,4 +1,5 @@
 ﻿using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState.Builder;
 
@@ -23,7 +24,8 @@ public class TransitionBuilder<TState, TTrigger> : ITransitionBuilder<TState, TT
         
         if (_noGaurdDestinations.Contains(destination))
         {
-            throw new InvalidOperationException($"A transition to {destination} without any gaurd already exists");
+            var inner = new Exception($"A transition to {destination} without any gaurd already exists");
+            throw new StateConfigurationException<TState>(Source, inner);
         }
 
         _destinationGaurds.TryGetValue(destination, out var gaurdList);
@@ -74,7 +76,7 @@ public class TransitionBuilder<TState, TTrigger> : ITransitionBuilder<TState, TT
         foreach (var destinationGaurd in _destinationGaurds)
         {
             var destinationStateRep = stateMachine.GetStateRepresentation(destinationGaurd.Key) ??
-                throw new InvalidOperationException($"No configuration available for {destinationGaurd.Key}");
+                throw new StateConfigurationException<TState>(destinationGaurd.Key);
 
             transitions.Add(destinationStateRep, destinationGaurd.Value);
         }

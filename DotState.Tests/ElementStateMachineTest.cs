@@ -2,7 +2,7 @@ using DotState.Builder;
 using DotState.Contracts;
 using DotState.Exceptions;
 using FluentAssertions;
-namespace DotState.Tests.Builder;
+namespace DotState.Tests;
 
 public class ElementStateMachineTest
 {
@@ -208,7 +208,7 @@ public class ElementStateMachineTest
         var testFinalState = State.State2;
         var testFailedFinalState = State.State3;
         var errorMessage = $"Cannot transition from state \"{testStartState}\" on trigger \"{trigger}\"";
-        
+
         smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => true)
             .AddTransition(trigger, testFailedFinalState, (_, _) => true);

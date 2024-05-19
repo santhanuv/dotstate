@@ -1,4 +1,5 @@
 ﻿using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState.Builder;
 
@@ -69,13 +70,13 @@ public abstract class StateBuilder<TState, TTrigger> : IStateBuilder<TState, TTr
     {
         if (parent == null) throw new ArgumentNullException(nameof(parent));
 
+        if (Parent != null && Parent.State != null && !Parent.State.Equals(parent))
+        {
+            throw new MultipleParentException<TState>(State, Parent.State, parent);
+        }
+
         var stateBuilder = _machineBuilder.GetStateBuilder(parent)
             ?? _machineBuilder.RegisterElementState(parent);
-
-        if (_machineBuilder.GetStateBuilder(parent) == null)
-        {
-            _machineBuilder.RegisterElementState(parent);
-        }
 
         Parent = stateBuilder;
         return this;
