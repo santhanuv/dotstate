@@ -2,10 +2,9 @@ using DotState.Builder;
 using DotState.Contracts;
 using DotState.Exceptions;
 using FluentAssertions;
-using static DotState.Tests.Builder.StateMachineTest;
 namespace DotState.Tests.Builder;
 
-public class StateMachineTest
+public class ElementStateMachineTest
 {
     public enum State
     {
@@ -29,7 +28,7 @@ public class StateMachineTest
         var testState = State.State1;
 
         // Act
-        smBuilder.Configure(testState);
+        smBuilder.ElementState(testState);
         var stateBuilder = smBuilder.GetStateBuilder(testState);
 
         // Assert
@@ -44,10 +43,10 @@ public class StateMachineTest
         var smBuilder = CreateStateMachineBuilder();
 
         // Act
-        smBuilder.Configure(State.State1)
+        smBuilder.ElementState(State.State1)
             .AddTransition(Trigger.Trigger1, State.State2);
 
-        smBuilder.Configure(State.State2)
+        smBuilder.ElementState(State.State2)
             .AddTransition(Trigger.Trigger1, State.State3)
             .AddTransition(Trigger.Trigger2, State.State1);
 
@@ -64,10 +63,10 @@ public class StateMachineTest
         var smBuilder = CreateStateMachineBuilder();
 
         // Act
-        smBuilder.Configure(State.State1)
+        smBuilder.ElementState(State.State1)
             .AddTransition(Trigger.Trigger1, State.State2);
 
-        smBuilder.Configure(State.State2)
+        smBuilder.ElementState(State.State2)
             .AddTransition(Trigger.Trigger1, State.State3)
             .AddTransition(Trigger.Trigger2, State.State1);
 
@@ -90,7 +89,7 @@ public class StateMachineTest
         var testFinalState = State.State2;
 
         // Act
-        smBuilder.Configure(testState)
+        smBuilder.ElementState(testState)
             .AddTransition(trigger, testFinalState);
         var stateEngine = CreateStateEngine(smBuilder, testState);
         var newState = stateEngine.ExecuteTransition(trigger);
@@ -110,7 +109,7 @@ public class StateMachineTest
         var testFailedFinalState = State.State3;
 
         // Act
-        smBuilder.Configure(testStartState)
+        smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => true)
             .AddTransition(trigger, testFailedFinalState, (_, _) => false);
 
@@ -133,7 +132,7 @@ public class StateMachineTest
         var testFailedFinalState = State.State3;
 
         // Act
-        smBuilder.Configure(testStartState)
+        smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => true)
             .AddTransition(trigger, testFinalState, (_, _) => true)
             .AddTransition(trigger, testFailedFinalState, (_, _) => false);
@@ -157,7 +156,7 @@ public class StateMachineTest
         var testFailedFinalState = State.State3;
 
         // Act
-        smBuilder.Configure(testStartState)
+        smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => false)
             .AddTransition(trigger, testFailedFinalState, (_, _) => false);
 
@@ -181,7 +180,7 @@ public class StateMachineTest
         var testFailedFinalState = State.State3;
 
         // Act
-        smBuilder.Configure(testStartState)
+        smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => true)
             .AddTransition(trigger, testFinalState, (_, _) => false)
             .AddTransition(trigger, testFailedFinalState, (_, _) => false);
@@ -207,7 +206,7 @@ public class StateMachineTest
         var errorMessage = $"Cannot transition from state \"{testStartState}\" on trigger \"{trigger}\"";
 
         // Act
-        smBuilder.Configure(testStartState)
+        smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => true)
             .AddTransition(trigger, testFailedFinalState, (_, _) => true);
 
@@ -233,7 +232,7 @@ public class StateMachineTest
         var errorMessage = $"Cannot transition from state \"{testStartState}\" on trigger \"{invalidTrigger}\"";
 
         // Act
-        smBuilder.Configure(testStartState)
+        smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => true)
             .AddTransition(trigger, testFailedFinalState, (_, _) => true);
 

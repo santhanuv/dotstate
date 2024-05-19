@@ -5,33 +5,52 @@ namespace DotState.Builder;
 public class TransitionBuilder<TState, TTrigger> : ITransitionBuilder<TState, TTrigger>
 {
     public TState Source {  get; private set; }
+    private readonly IList<TState> _noGaurdDestinations;
     private readonly IDictionary<TState, IList<Func<TState, TTrigger, bool>>> _destinationGaurds;
+    private readonly StateMachineBuilder<TState, TTrigger> _machineBuilder;
 
-    internal TransitionBuilder(TState source)
+    internal TransitionBuilder(StateMachineBuilder<TState, TTrigger> machineBuilder, TState source)
     {
+        _machineBuilder = machineBuilder;
         Source = source;
         _destinationGaurds = new Dictionary<TState, IList<Func<TState, TTrigger, bool>>>();
+        _noGaurdDestinations = new List<TState>();
     }
 
-    internal void AddDestination(TState destination)
+    public void ToDestination(TState destination)
     {
         if (destination == null) throw new ArgumentNullException(nameof(destination));
-
-        var gaurdList = new List<Func<TState, TTrigger, bool>>();
-
-        if(!_destinationGaurds.TryAdd(destination, gaurdList))
+        
+        if (_noGaurdDestinations.Contains(destination))
         {
-            throw new InvalidOperationException($"A transition to {destination} already exists");
+            throw new InvalidOperationException($"A transition to {destination} without any gaurd already exists");
+        }
+
+        _destinationGaurds.TryGetValue(destination, out var gaurdList);
+
+        if (gaurdList == null)
+        {
+            gaurdList = new List<Func<TState, TTrigger, bool>>();
+            _destinationGaurds.TryAdd(destination, gaurdList);
+        }
+
+        gaurdList.Add((_, _) => true);
+
+        _noGaurdDestinations.Add(destination);
+
+        if (_machineBuilder.GetStateBuilder(destination) == null)
+        {
+            _machineBuilder.RegisterElementState(destination);
         }
     }
 
-    public void AddGaurd(Func<TState, TTrigger, bool> gaurd, TState destination)
+    public void ToDestination(TState destination, Func<TState, TTrigger, bool> gaurd)
     {
         if (destination == null) throw new ArgumentNullException(nameof(destination));
         if (gaurd == null) throw new ArgumentNullException(nameof(gaurd));
 
         _destinationGaurds.TryGetValue(destination, out var gaurdList);
-        
+
         if (gaurdList == null)
         {
             gaurdList = new List<Func<TState, TTrigger, bool>>() { gaurd };
@@ -40,6 +59,11 @@ public class TransitionBuilder<TState, TTrigger> : ITransitionBuilder<TState, TT
         else
         {
             gaurdList.Add(gaurd);
+        }
+
+        if (_machineBuilder.GetStateBuilder(destination) == null)
+        {
+            _machineBuilder.RegisterElementState(destination);
         }
     }
 
