@@ -9,6 +9,7 @@ public class StateEngine<TState, TTrigger>
     private IStateRepresentation<TState, TTrigger> _currentState;
     public TState CurrentState { get { return _currentState.State; } }
     public bool IgnoreInvalidTriggers { get; set; } = false;
+    public bool IgnoreTriggerOnFalseGaurds { get; set; } = false;
 
     public StateEngine(IStateMachine<TState, TTrigger> machine, TState initialState)
     {
@@ -29,9 +30,14 @@ public class StateEngine<TState, TTrigger>
             if (IgnoreInvalidTriggers) return state;
             else throw new InvalidTransitionException<TState, TTrigger>(state, trigger);
         }
-        else if (nextStateRep == null) return state;
+        
+        if (nextStateRep == null)
+        {
+            if (IgnoreTriggerOnFalseGaurds) return state;
+            else throw new InvalidTransitionException<TState, TTrigger>(state, trigger);
+        }
 
-        _currentState = nextStateRep;
+        _currentState = nextStateRep.GetDefaultStateRepresentation();
         var nextState = _currentState.State;
 
         if (!state.Equals(nextState))
