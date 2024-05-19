@@ -1,4 +1,5 @@
 ﻿using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState.Builder;
 
@@ -13,14 +14,17 @@ public abstract class StateBuilder<TState, TTrigger> : IStateBuilder<TState, TTr
     public TState DefaultState { get; init; }
     public IStateBuilder<TState, TTrigger>? Parent { get; private set; } = null;
 
-    protected StateBuilder(StateMachineBuilder<TState, TTrigger> machineBuilder, TState source, TState defaultState,
-        StateBuilder<TState, TTrigger>? parent)
+    protected StateBuilder(StateMachineBuilder<TState, TTrigger> machineBuilder, TState state, TState defaultState, IStateBuilder<TState, TTrigger>? parent)
+        :this(machineBuilder, state, defaultState, parent, null) {}
+
+    protected StateBuilder(StateMachineBuilder<TState, TTrigger> machineBuilder, TState state, TState defaultState,
+    IStateBuilder<TState, TTrigger>? parent, IDictionary<TTrigger, TransitionBuilder<TState, TTrigger>>? transitions)
     {
         _machineBuilder = machineBuilder;
-        State = source;
+        State = state;
         DefaultState = defaultState;
         Parent = parent;
-        _transitions = new Dictionary<TTrigger, TransitionBuilder<TState, TTrigger>>();
+        _transitions = transitions ?? new Dictionary<TTrigger, TransitionBuilder<TState, TTrigger>>();
     }
 
     public IStateBuilder<TState, TTrigger> AddTransition(TTrigger trigger, TState destination, Func<TState, TTrigger, bool>? gaurd)
@@ -28,8 +32,6 @@ public abstract class StateBuilder<TState, TTrigger> : IStateBuilder<TState, TTr
         if (trigger == null) throw new ArgumentNullException(nameof(trigger));
         if (destination == null) throw new ArgumentNullException(nameof(destination));
         
-        if (_machineBuilder.GetStateBuilder(State) == null) _machineBuilder.RegisterElementState(destination);
-
         _transitions.TryGetValue(trigger, out var transition);
 
         if (transition == null)
@@ -46,6 +48,8 @@ public abstract class StateBuilder<TState, TTrigger> : IStateBuilder<TState, TTr
         {
             transition.ToDestination(destination, gaurd);
         }
+
+        if (_machineBuilder.GetStateBuilder(destination) == null) _machineBuilder.RegisterElementState(destination);
 
         return this;
     }
@@ -69,13 +73,13 @@ public abstract class StateBuilder<TState, TTrigger> : IStateBuilder<TState, TTr
     {
         if (parent == null) throw new ArgumentNullException(nameof(parent));
 
+        if (Parent != null && Parent.State != null && !Parent.State.Equals(parent))
+        {
+            throw new MultipleParentException<TState>(State, Parent.State, parent);
+        }
+
         var stateBuilder = _machineBuilder.GetStateBuilder(parent)
             ?? _machineBuilder.RegisterElementState(parent);
-
-        if (_machineBuilder.GetStateBuilder(parent) == null)
-        {
-            _machineBuilder.RegisterElementState(parent);
-        }
 
         Parent = stateBuilder;
         return this;
@@ -103,12 +107,17 @@ public abstract class StateBuilder<TState, TTrigger> : IStateBuilder<TState, TTr
         return _onExit;
     }
 
-    internal IDictionary<TTrigger, TransitionBuilder<TState, TTrigger>> GetAllTransitions()
-    {
-        return _transitions;
-    }
-
     internal abstract IStateRepresentation<TState, TTrigger> Build(IStateMachine<TState, TTrigger> stateMachine);
     
     internal abstract void SetupRelations(IStateMachine<TState, TTrigger> stateMachine);
+    
+    internal IReadOnlyDictionary<TTrigger, TransitionBuilder<TState, TTrigger>> GetAllTransitions()
+    {
+        return (IReadOnlyDictionary<TTrigger, TransitionBuilder<TState, TTrigger>>)_transitions;
+    }
+
+    IReadOnlyDictionary<TTrigger, TransitionBuilder<TState, TTrigger>> IStateBuilder<TState, TTrigger>.GetAllTransitions()
+    {
+        return GetAllTransitions();
+    }
 }

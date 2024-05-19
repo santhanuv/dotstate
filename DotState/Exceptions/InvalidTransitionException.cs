@@ -2,22 +2,22 @@
 
 public class InvalidTransitionException<TState, TTrigger> : Exception
 {
-    public InvalidTransitionException(TState state, TTrigger trigger)
+    internal InvalidTransitionException(TState state, TTrigger trigger)
         : this(state, trigger, CreateMessageString(state, trigger), null)
     {
     }
 
-    public InvalidTransitionException(TState state, TTrigger trigger, string message)
+    internal InvalidTransitionException(TState state, TTrigger trigger, string message)
         : this(state, trigger, message, null)
     {
     }
 
-    public InvalidTransitionException(TState state, TTrigger trigger, Exception inner)
+    internal InvalidTransitionException(TState state, TTrigger trigger, Exception inner)
         : this(state, trigger, CreateMessageString(state, trigger), inner)
     {
     }
 
-    public InvalidTransitionException(TState state, TTrigger trigger, string message, Exception? inner)
+    internal InvalidTransitionException(TState state, TTrigger trigger, string message, Exception? inner)
         : base(message, inner)
     {
         State = state;

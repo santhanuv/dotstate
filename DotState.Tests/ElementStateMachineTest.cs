@@ -2,7 +2,7 @@ using DotState.Builder;
 using DotState.Contracts;
 using DotState.Exceptions;
 using FluentAssertions;
-namespace DotState.Tests.Builder;
+namespace DotState.Tests;
 
 public class ElementStateMachineTest
 {
@@ -155,12 +155,14 @@ public class ElementStateMachineTest
         var testFinalState = State.State2;
         var testFailedFinalState = State.State3;
 
-        // Act
         smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => false)
             .AddTransition(trigger, testFailedFinalState, (_, _) => false);
 
         var stateEngine = CreateStateEngine(smBuilder, testStartState);
+        stateEngine.IgnoreTriggerOnFalseGaurds = true;
+
+        // Act
         var newState = stateEngine.ExecuteTransition(trigger);
 
         // Assert
@@ -179,13 +181,15 @@ public class ElementStateMachineTest
         var testFinalState = State.State2;
         var testFailedFinalState = State.State3;
 
-        // Act
         smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => true)
             .AddTransition(trigger, testFinalState, (_, _) => false)
             .AddTransition(trigger, testFailedFinalState, (_, _) => false);
 
         var stateEngine = CreateStateEngine(smBuilder, testStartState);
+        stateEngine.IgnoreTriggerOnFalseGaurds = true;
+
+        // Act
         var newState = stateEngine.ExecuteTransition(trigger);
 
         // Assert
@@ -205,16 +209,17 @@ public class ElementStateMachineTest
         var testFailedFinalState = State.State3;
         var errorMessage = $"Cannot transition from state \"{testStartState}\" on trigger \"{trigger}\"";
 
-        // Act
         smBuilder.ElementState(testStartState)
             .AddTransition(trigger, testFinalState, (_, _) => true)
             .AddTransition(trigger, testFailedFinalState, (_, _) => true);
-
         var stateEngine = CreateStateEngine(smBuilder, testStartState);
 
+        // Act
+        var invoking = stateEngine
+            .Invoking(se => se.ExecuteTransition(trigger));
+
         // Assert
-        var newState = stateEngine
-            .Invoking(se => se.ExecuteTransition(trigger))
+        invoking
             .Should().Throw<InvalidTransitionException<State, Trigger>>()
             .WithMessage(errorMessage);
     }

@@ -1,4 +1,5 @@
 ﻿using DotState.Contracts;
+using DotState.Exceptions;
 
 namespace DotState.Builder;
 
@@ -16,6 +17,10 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
         var stateMachine = new StateMachine<TState, TTrigger>();
         foreach (var stateBuilder in _stateBuilders.Values)
         {
+            if (stateBuilder.GetType() == typeof(CompositeStateBuilder<TState, TTrigger>))
+            {
+                Console.WriteLine("remove");
+            }
             stateBuilder.Build(stateMachine);
         }
 
@@ -31,8 +36,18 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
     {
         var stateBuilder = GetStateBuilder(state);
 
-        return stateBuilder
-            ?? RegisterCompositeState(state, defaultState);
+        if (stateBuilder != null)
+        {
+            if (stateBuilder.GetType() != typeof(CompositeStateBuilder<TState, TTrigger>))
+            {
+                return RegisterCompositeState(stateBuilder, defaultState);
+            }
+
+            if (stateBuilder.DefaultState != null && !stateBuilder.DefaultState.Equals(defaultState))
+                throw new MultipleDefaultStateException<TState>(state, stateBuilder.DefaultState, defaultState);
+        }
+
+        return stateBuilder ?? RegisterCompositeState(state, defaultState);
     }
 
     public IStateBuilder<TState, TTrigger> ElementState(TState state)
@@ -49,27 +64,46 @@ public class StateMachineBuilder<TState, TTrigger> : IStateMachineBuilder<TState
     internal CompositeStateBuilder<TState, TTrigger> RegisterCompositeState(TState state, TState defaultState)
     {
         if (state == null) throw new ArgumentNullException(nameof(state));
-
-        IStateBuilder<TState, TTrigger>? stateBuilder = GetStateBuilder(state);
-
-        if (stateBuilder != null) throw new InvalidOperationException($"State \"{state}\" has been registered already.");
-        
+        if (defaultState == null) throw new ArgumentNullException(nameof(defaultState));
 
         var compositeStateBuilder = new CompositeStateBuilder<TState, TTrigger>(this, state, defaultState);
-        _stateBuilders.TryAdd(state, compositeStateBuilder);
-        return compositeStateBuilder;
+        var hasRegistered = _stateBuilders.TryAdd(state, compositeStateBuilder);
 
+        if (!hasRegistered) throw new StateConfigurationException<TState>(state, $"State \"{state}\" has been registered already.");
+
+        if (GetStateBuilder(defaultState) == null)
+        {
+            RegisterElementState(defaultState);
+        }
+
+        return compositeStateBuilder;
+    }
+
+    private CompositeStateBuilder<TState, TTrigger> RegisterCompositeState(IStateBuilder<TState, TTrigger> stateBuilder, TState defaultState)
+    {
+        if (stateBuilder == null) throw new ArgumentNullException(nameof(stateBuilder));
+        if (defaultState == null) throw new ArgumentNullException(nameof(defaultState));
+
+        var compositeStateBuilder = new CompositeStateBuilder<TState, TTrigger>(this, stateBuilder, defaultState);
+        _stateBuilders[stateBuilder.State] = compositeStateBuilder;
+
+        if (GetStateBuilder(defaultState) == null)
+        {
+            RegisterElementState(defaultState);
+        }
+
+        return compositeStateBuilder;
     }
 
     internal StateBuilder<TState, TTrigger> RegisterElementState(TState state) 
     {
         if (state == null) throw new ArgumentNullException(nameof(state));
 
-        var elementState = new ElementStateBuilder<TState, TTrigger>(this, state);
-        var hasRegistered = _stateBuilders.TryAdd(state, elementState);
+        var elementStateBuilder = new ElementStateBuilder<TState, TTrigger>(this, state);
+        var hasRegistered = _stateBuilders.TryAdd(state, elementStateBuilder);
         
-        if (!hasRegistered) throw new InvalidOperationException($"State \"{state}\" has been registered already.");
+        if (!hasRegistered) throw new StateConfigurationException<TState>(state, $"State \"{state}\" has been registered already.");
 
-        return elementState;
+        return elementStateBuilder;
     }
 }
